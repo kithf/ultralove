@@ -1,10 +1,12 @@
 local ffi = require "ffi"
 local bit = require "bit"
+local utf8 = require "utf8"
 local ultralove = require "ul"
 local ul = ultralove.ultralight
 local wc = ultralove.webcore
 local ulc = ultralove.core
 local ac = ultralove.appcore
+local kc = ultralove.keycodes
 local renderer, view
 
 js_func = function(ctx, func, this, args_n, args, except)
@@ -37,6 +39,8 @@ end
 ready_c = ffi.new("ULDOMReadyCallback", ready)
 
 love.load = function()
+  love.keyboard.setKeyRepeat(true)
+
   local conf = ul.ulCreateConfig()
 
   local resource_path = ul.ulCreateString("./resources/")
@@ -76,13 +80,21 @@ function test() {
     setted = true;
   }
 }
+
+function input_test() {
+  var desc = document.getElementById("desc");
+  var inp = document.getElementById("inp");
+  desc.innerHTML = inp.value;
+}
 </script>
 </head>
 <body>
 <h1 id="title">Hello, Love2D!</h1>
+<p id="desc"> Some text under </p>
 <marquee>Left</marquee>
 <marquee direction="right">Right</marquee>
 <button id="btn" onclick="test();">Click me!</button>
+<input id="inp" type="text" value="Hello, Ultralight!" oninput="input_test();" />
 </body>
 </html>    
   ]]
@@ -166,4 +178,30 @@ love.mousereleased = function(x, y, button, isTouch)
   local lx, ly = localize_coords(x, y)
   local mouse_event = ul.ulCreateMouseEvent(ul.kMouseEventType_MouseUp, lx, ly, mouse_button)
   ul.ulViewFireMouseEvent(view, mouse_event)
+end
+
+love.keypressed = function(key, scancode, isrepeat)
+  --local key_event = ul.ulCreateKeyEvent(ul.kKeyEventType_KeyDown, 0, key, 0, 0)
+  local key_text = ul.ulCreateString(key)
+  local is_keypad = key:sub(1, 2) == "kp"
+  local key_event = ul.ulCreateKeyEvent(
+    ul.kKeyEventType_RawKeyDown,
+    0, kc[key], 0, key_text, key_text, is_keypad, isrepeat, false
+  )
+  print(key, kc[key])
+  ul.ulViewFireKeyEvent(view, key_event)
+  ul.ulDestroyString(key_text)
+end
+
+love.textinput = function(text)
+  print(utf8.len(text))
+  local utf8_text = ul.ulCreateStringUTF8(text, #text)
+  local key_text = ul.ulCreateString(text)
+  local key_event = ul.ulCreateKeyEvent(
+    ul.kKeyEventType_Char,
+    0, 0, 0, utf8_text, key_text, false, false, false
+  )
+  ul.ulViewFireKeyEvent(view, key_event)
+  ul.ulDestroyString(key_text)
+  ul.ulDestroyString(utf8_text)
 end
